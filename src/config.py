@@ -9,6 +9,8 @@ import time
 import torchvision
 from pathlib import Path
 
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
 class Config:
     def __init__(self, args):
         self.seed = 1029
@@ -16,9 +18,12 @@ class Config:
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.norm = False
 
+        self.models_dir = PROJECT_ROOT / "checkpoints"
+        self.models_dir.mkdir(parents=True, exist_ok=True)
+
         # File paths
         timestamp = datetime.datetime.now().strftime("%m%d%H%M%S")
-        self.workdir = Path(f"checkpoints/{args.model}_{args.trainset}_{args.channel_type}_{timestamp}")
+        self.workdir = Path(f"{self.models_dir}/{args.model}_{args.trainset}_{args.channel_type}_{args.multiple_snr}_{args.C}_{timestamp}")
         self.samples = self.workdir / "samples"
         self.models = self.workdir / "models"
         self.log = self.workdir / "log.txt"
@@ -28,15 +33,19 @@ class Config:
         self.learning_rate = 1e-4
         # self.total_epochs = 1_000_000
         self.total_epochs = 10
-        self.print_step = 100
+        self.print_step = 1000
 
         # Dataset setup
         if args.trainset == 'CIFAR10':
             self.image_dims = (3, 32, 32)
-            self.batch_size = 64
-            self.train_data_dir = "dataset/raw/CIFAR10/"
-            self.test_data_dir = "dataset/raw/CIFAR10/"
-            self.save_model_freq = 1
+            self.batch_size = 128
+            if args.model == 'DJSCC':
+                self.train_data_dir = f"{PROJECT_ROOT}/dataset/raw/CIFAR10"
+                self.test_data_dir = f"{PROJECT_ROOT}/dataset/raw/CIFAR10"
+            else:
+                self.train_data_dir = f"{PROJECT_ROOT}/dataset/raw/CIFAR10"
+                self.test_data_dir = f"{PROJECT_ROOT}/dataset/raw/CIFAR10"
+            self.save_model_freq = 5
 
             self.channel_number = int(args.C)
             self.downsample = 2
@@ -77,19 +86,19 @@ class Config:
             self.batch_size = 2
             base_path = "dataset/raw"
             if args.testset == 'kodak':
-                self.test_data_dir = ["dataset/raw/kodak"]
+                self.test_data_dir = [f"{PROJECT_ROOT}/dataset/raw/kodak"]
             elif args.testset == 'clic21':
-                self.test_data_dir = ["dataset/raw/clic2021/test"]
+                self.test_data_dir = [f"{PROJECT_ROOT}/dataset/raw/clic2021/test"]
             elif args.testset == 'ffhq':
-                self.test_data_dir = ["dataset/raw/ffhq"]
+                self.test_data_dir = [f"{PROJECT_ROOT}/dataset/raw/ffhq"]
             self.save_model_freq = 5
 
             self.train_data_dir = [
                 # base_path + '/clic2021/train',
                 # base_path + '/clic2021/valid',
                 # base_path + '/clic2020',
-                base_path + '/div2k/DIV2K_train_HR',
-                base_path + '/div2k/DIV2K_valid_HR'
+                f"{PROJECT_ROOT}/dataset/raw/div2k/DIV2K_train_HR",
+                f"{PROJECT_ROOT}/dataset/raw/div2k/DIV2K_valid_HR"
             ]
 
             if args.model == 'DJSCC':

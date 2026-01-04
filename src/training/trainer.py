@@ -9,6 +9,10 @@ from utils.helpers import *
 from utils.logger import *
 from training.loss import MS_SSIM
 from models.SwinJSCC.network import SwinJSCC
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+MODELS_DIR = PROJECT_ROOT / "checkpoints"
 
 class Trainer:
     def __init__(self, cfg: Config, net: nn.Module, train_loader, test_loader, logger: logging.Logger):
@@ -29,8 +33,8 @@ class Trainer:
     @torch.no_grad()
     def _calc_metrics(self, inp: torch.Tensor, recon: torch.Tensor, mse: torch.Tensor):
         psnr = 10 * (torch.log(255. * 255. / mse) / np.log(10)).item() if mse.item() > 0 else 0.0
-        ssim = 1 - self.ssim(inp, recon.clamp(0, 1)).mean().item()
-        return psnr, ssim
+        mssim = 1 - self.ssim(inp, recon.clamp(0, 1)).mean().item()
+        return psnr, mssim
     
     def train_one_epoch(self, epoch: int) -> None:
         self.net.train()
@@ -157,8 +161,12 @@ class Trainer:
         print("Finish Test!")
 
     def save_checkpoint(self, epoch: int) -> None:
-        filename = f"EP{epoch}.pth"
+        filename = f"EP{epoch}.model"
         path = self.cfg.models / filename
+
+        # Create directory if missing
+        path.parent.mkdir(parents=True, exist_ok=True)
+
         torch.save(self.net.state_dict(), path)
         self.logger.info(f"Checkpoint saved → {path}")
 

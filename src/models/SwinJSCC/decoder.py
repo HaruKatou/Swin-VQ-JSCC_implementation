@@ -136,10 +136,11 @@ class SwinJSCC_Decoder(nn.Module):
     
     def forward(self, x, snr=None, model=None):
 
-        if model != 'SwinJSCC_w/_RA' and model != 'SwinJSCC_w/o_SAandRA':
-            x = self._apply_modulation(x, snr)
-        else:
+        if model == 'SwinJSCC_w/_SA' or model == 'SwinJSCC_w/o_SAandRA':
             x = self.head_list(x)
+
+        if model == 'SwinJSCC_w/_SA' or model == 'SwinJSCC_w/_SAandRA':
+            x = self._apply_modulation(x, snr)
 
         for layer in self.layers:
             x = layer(x)

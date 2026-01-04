@@ -133,7 +133,7 @@ class SwinJSCC_Encoder(nn.Module):
         temp = x.detach()
         for i in range(self.layer_num):
             temp = sm_list[i](temp)
-            bm = bm_list[i](batch_input).unsqueeze(1).expand(-1, H * W // (self.num_layers ** 4), -1)
+            bm = bm_list[i](batch_input).unsqueeze(1)
             temp = temp * bm
 
         mod_val = sigmoid_fn(sm_list[-1](temp))
@@ -156,7 +156,7 @@ class SwinJSCC_Encoder(nn.Module):
             return x, None
         
         elif model == 'SwinJSCC_w/_RA':
-            x, mod_val = self._apply_modulation(x, self.ra_sm_list, self.ra_bm_list, rate, self.H, self.W, self.ra_sigmoid)
+            x, mod_val = self._apply_modulation(x=x, sm_list=self.ra_sm_list, bm_list=self.ra_bm_list, batch_input=rate, H=self.H, W=self.W, sigmoid_fn=self.ra_sigmoid)
 
         elif model == 'SwinJSCC_w/_SAandRA':
             x, _ = self._apply_modulation(x, self.sa_sm_list, self.sa_bm_list, snr, self.H, self.W, self.sa_sigmoid)

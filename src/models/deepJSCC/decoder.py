@@ -24,7 +24,7 @@ class DJSCC_Decoder(nn.Module):
 
         self.C = C
 
-        self.tconv1 = TransConvWithPReLU(in_channels=self.C, out_channels=32, kernel_size=5, stride=1, padding=2)
+        self.tconv1 = TransConvWithPReLU(in_channels=2*self.C, out_channels=32, kernel_size=5, stride=1, padding=2)
         self.tconv2 = TransConvWithPReLU(in_channels=32, out_channels=32, kernel_size=5, stride=1, padding=2)
         self.tconv3 = TransConvWithPReLU(in_channels=32, out_channels=32, kernel_size=5, stride=1, padding=2)
         self.tconv4 = TransConvWithPReLU(in_channels=32, out_channels=16, kernel_size=5, stride=2, padding=2, output_padding=1)
