@@ -38,7 +38,8 @@ class DJSCC_CNN(nn.Module):
         feature = self.encoder(input_image)
 
         CBR = channel_number * torch.prod(torch.tensor(feature.size()[-2:])) / torch.prod(torch.tensor(input_image.size()[1:]))
-        print("Compression Ratio: ", CBR.item())
+
+        # print("Compression Ratio: ", CBR.item())
 
         if self.config.pass_channel:
             noisy_feature = self.channel.forward(feature, chan_param)

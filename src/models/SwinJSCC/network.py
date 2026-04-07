@@ -1,9 +1,117 @@
+from numpy import unique
+
 from .decoder import *
 from .encoder import *
 from .channel import Channel
+from .channel_vq import *
 from training.loss import Distortion
 from random import choice
 import torch.nn as nn
+
+
+class VectorQuantizer(nn.Module):
+    """
+    Discrete bottleneck layer (VQ-VAE style).
+ 
+    """
+
+    def __init__(self, num_embeddings: int, embedding_dim: int, beta: float = 0.25, ema_decay: float = 0.99):
+        super().__init__()
+        self.num_embeddings = num_embeddings
+        self.embedding_dim  = embedding_dim
+        self.beta           = beta
+        self.ema_decay      = ema_decay
+
+        # Codebook E — shape [J, D], trained alongside encoder/decoder
+        self.embedding = nn.Embedding(num_embeddings, embedding_dim)
+        self.embedding.weight.data.uniform_(-1.0 / num_embeddings, 1.0 / num_embeddings)
+
+        self.register_buffer('ema_cluster_size', torch.zeros(num_embeddings))
+        self.register_buffer('ema_w', self.embedding.weight.data.clone())
+    
+    def forward(self, z: torch.Tensor):
+        """
+        Args:
+            z: [B, N, C] — Swin encoder output after head_list projection
+            snr: scalar — signal-to-noise ratio for channel simulation
+            bit_per_index: int — bits per index for channel simulation
+            pass_channel: bool — whether to pass through channel simulation
+
+        Returns:
+            z_q:     [B, N, C] straight-through quantized tensor
+            vq_loss: scalar — added to total loss during training
+            indices: [B, N] int — nearest codebook entry per token
+        """
+        B, N, C = z.shape
+        z_flat = z.reshape(-1, C) # [B*N, C]
+ 
+        # Pairwise squared L2 distances: ||z - e||^2
+        # d = ||z||^2 + ||e||^2 - 2 * z @ e^T
+        d = (
+            torch.sum(z_flat ** 2, dim=1, keepdim=True)             # [B*N, 1]
+            + torch.sum(self.embedding.weight ** 2, dim=1)          # [J]
+            - 2.0 * torch.matmul(z_flat, self.embedding.weight.t())            # [B*N, J]
+        )
+ 
+        # Nearest codebook entry per token
+        indices  = torch.argmin(d, dim=1)                                  # [B*N]
+        z_q_flat = self.embedding(indices)                              # [B*N, C]
+
+        if self.training:
+            with torch.no_grad():
+                # One-hot for counting
+                one_hot = torch.zeros(B * N, self.num_embeddings, device=z.device)
+                one_hot.scatter_(1, indices.reshape(-1, 1), 1)
+
+                # Update cluster sizes and embedding sums
+                self.ema_cluster_size = (self.ema_decay * self.ema_cluster_size
+                                        + (1 - self.ema_decay) * one_hot.sum(0))
+                dw = one_hot.t() @ z_flat
+                self.ema_w = (self.ema_decay * self.ema_w
+                            + (1 - self.ema_decay) * dw)
+
+                # Normalize and update embedding weights
+                n = self.ema_cluster_size.sum()
+                cluster_size = ((self.ema_cluster_size + 1e-5)
+                                / (n + self.num_embeddings * 1e-5) * n)
+                self.embedding.weight.data = self.ema_w / cluster_size.unsqueeze(1)
+
+                # Dead entry reinitialization
+                dead = (self.ema_cluster_size < 1.0).nonzero(as_tuple=True)[0]
+                if len(dead) > 0:
+                    print(f"Reinitializing {len(dead)} dead entries")
+                    random_idx = torch.randint(0, B * N, (len(dead),), device=z.device)
+                    self.embedding.weight.data[dead] = z_flat[random_idx].detach()
+                    self.ema_w[dead] = z_flat[random_idx].detach()
+                    self.ema_cluster_size[dead] = 1.0
+
+        unique = torch.unique(indices)
+        print(f"Codebook usage: {len(unique)}/{self.num_embeddings} entries used")
+
+        z_q = z_flat + (z_q_flat - z_flat).detach()
+        z_q = z_q.reshape(B, N, C)
+ 
+        # codebook_loss   = F.mse_loss(z_q_flat, z_flat.detach())
+        # commitment_loss = F.mse_loss(z_flat,   z_q_flat.detach())
+        # vq_loss = codebook_loss + self.beta * commitment_loss
+        vq_loss = self.beta * F.mse_loss(z_flat, z_q_flat.detach())
+ 
+        indices = indices.reshape(B, N)                             # [B, N]
+        return z_q, vq_loss, indices
+    
+    def get_normalized_codebook(self) -> torch.Tensor:
+        """
+        Returns L2-normalized codebook E_norm [J, D].
+ 
+        Used to compute the orthogonality loss:
+            L_s = ||E_norm^T @ E_norm||_F^2
+        which pushes basis vectors to be mutually orthogonal,
+        maximising the margin between entries and improving robustness
+        against feature-space perturbations (Section III-C, Hu et al.).
+        """
+        w = self.embedding.weight                                   # [J, D]
+        return w / (w.norm(dim=1, keepdim=True) + 1e-8)
+
 
 class SwinJSCC(nn.Module):
     """
@@ -23,18 +131,37 @@ class SwinJSCC(nn.Module):
         self.pass_channel = config.pass_channel
         self.downsample = config.downsample
 
+        self.multiple_snr = [int(s) for s in args.multiple_snr.split(",")]
+        self.channel_number = [int(c) for c in args.C.split(",")]
+
         self.encoder = create_encoder(**config.encoder_kwargs)
         self.decoder = create_decoder(**config.decoder_kwargs)
 
         self.channel = Channel(args, config)
         self.distortion_loss = Distortion(args)
         self.mse_loss = nn.MSELoss(reduction='none')
-        
-        # Parse multiple SNRs and channel numbers
-        self.multiple_snr = [int(s) for s in args.multiple_snr.split(",")]
-        self.channel_number = [int(c) for c in args.C.split(",")]
 
         self.H = self.W = 0
+
+        if self.model == 'SwinJSCC_vq-vae':
+            C = self.channel_number[0]
+ 
+            vq_num_embeddings    = getattr(args, 'vq_num_embeddings', 512)
+            vq_beta              = getattr(args, 'vq_beta',           0.25)
+            self.vq_lambda_ortho = getattr(args, 'vq_lambda_ortho',   0.01)
+ 
+            self.vq = VectorQuantizer(
+                num_embeddings = vq_num_embeddings,
+                embedding_dim  = C,
+                beta           = vq_beta,
+            )
+
+            if config.logger:
+                config.logger.info(
+                    f'[VQ-VAE] Codebook: J={vq_num_embeddings}, '
+                    f'dim={C}, beta={vq_beta}, '
+                    f'lambda_ortho={self.vq_lambda_ortho}'
+                )
 
         # Logging
         if config.logger:
@@ -84,6 +211,9 @@ class SwinJSCC(nn.Module):
             else:
                 noisy_feature = feature
 
+            # Decode
+            recon_image = self.decoder(noisy_feature, chan_param, self.model)
+
         elif self.model in ['SwinJSCC_w/_RA', 'SwinJSCC_w/_SAandRA']:
             feature, mask = self.encoder(input_image, chan_param, channel_number, self.model)
             CBR = channel_number / (2 * 3 * 2 ** (self.downsample * 2))
@@ -96,14 +226,44 @@ class SwinJSCC(nn.Module):
                 
             noisy_feature = noisy_feature * mask
 
+            # Decode
+            recon_image = self.decoder(noisy_feature, chan_param, self.model)
+
+        elif self.model == 'SwinJSCC_vq-vae':
+            feature, _ = self.encoder(
+                input_image, chan_param, channel_number, self.model
+            )
+
+            CBR = feature.numel() / (2 * input_image.numel())
+
+            if self.pass_channel:
+                noisy_feature = self.feature_pass_channel(feature, chan_param)
+            else:
+                noisy_feature = feature
+
+            z_q, vq_loss, indices = self.vq(noisy_feature)
+
+            # 2. VQ bottleneck
+ 
+            # 3. Orthogonality loss -- ||E_norm^T @ E_norm||_F^2
+            #    Pushes basis vectors to be mutually orthogonal.
+            #    Larger distance between entries = more robust to noise.
+            E_norm     = self.vq.get_normalized_codebook()          # [J, D]
+            ortho_loss = torch.norm(E_norm @ E_norm.t(), p='fro') ** 2
+            
+            # Decode
+            recon_image = self.decoder(z_q, chan_param, 'SwinJSCC_w/o_SAandRA')
+
         else:
             raise ValueError(f"Unknown model variant: {self.model}")
-        
-        # Decode
-        recon_image = self.decoder(noisy_feature, chan_param, self.model)
 
         # Compute metrics
         mse = self.mse_loss(input_image * 255., recon_image.clamp(0., 1.) * 255.).mean()
         loss = self.distortion_loss.forward(input_image, recon_image.clamp(0., 1.)).mean()
+
+        # Augment loss with VQ terms for the VQ variant.
+        if self.model == 'SwinJSCC_vq-vae':
+            print(f"VQ Loss: {vq_loss.item():.4f}, Ortho Loss: {ortho_loss.item():.4f}")
+            loss = loss + vq_loss + self.vq_lambda_ortho * ortho_loss
 
         return recon_image, CBR, chan_param, mse, loss

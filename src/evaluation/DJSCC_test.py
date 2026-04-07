@@ -69,6 +69,20 @@ def main():
 
     net = DJSCC_CNN(args, cfg).to(cfg.device)
 
+    project_root = current_file_path.parent.parent.parent
+    pretrained_path = project_root / "checkpoints" / "DJSCC_div2k_awgn_19_3_1217220352" / "models" / "EP10.model"
+    if Path(pretrained_path).exists():
+        # 3. Load the translated state_dict into your model
+        try:
+            checkpoint = torch.load(pretrained_path, map_location=cfg.device)
+            net.load_state_dict(checkpoint, strict=True)
+            print("Successfully loaded translated state_dict!")
+        except RuntimeError as e:
+            print("Error loading translated state_dict. There may be more mismatches:")
+            print(e)
+    else:
+        print("Checkpoint not found:", pretrained_path)
+
     trainer = Trainer(cfg, net, train_loader, test_loader, logger)
 
     if args.training:

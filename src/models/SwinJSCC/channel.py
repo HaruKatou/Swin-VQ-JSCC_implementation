@@ -98,7 +98,7 @@ class Channel(nn.Module):
 
         if self.channel_type == 'awgn':
             noise = (channel_output - channel_tx).detach()
-            noise.reqruire_grad = False
+            noise.requires_grad = False
             channel_tx = channel_tx + noise
             if avg_power:
                 return channel_tx * torch.sqrt(avg_power * 2)
