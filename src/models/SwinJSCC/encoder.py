@@ -97,7 +97,7 @@ class SwinJSCC_Encoder(nn.Module):
             self.head_list = nn.Linear(embed_dims[-1], C)
 
         # Build adaptive modulators
-        if model != 'SwinJSCC_w/o_SAandRA':
+        if model not in ['SwinJSCC_w/o_SAandRA', 'SwinJSCC_vq-vae']:
             self._build_modulators(model)
 
         self.apply(self._init_weights)
@@ -147,7 +147,7 @@ class SwinJSCC_Encoder(nn.Module):
             x = layer(x)
         x = self.norm(x)
 
-        if model == 'SwinJSCC_w/o_SAandRA':
+        if model in ['SwinJSCC_w/o_SAandRA', 'SwinJSCC_vq-vae']:
             return self.head_list(x), None
         
         elif model == 'SwinJSCC_w/_SA':

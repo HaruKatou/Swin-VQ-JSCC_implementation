@@ -29,7 +29,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     p.add_argument("--model", type=str,
                 default="SwinJSCC_w/_SAandRA",
                 choices=["SwinJSCC_w/o_SAandRA", "SwinJSCC_w/_SA",
-                            "SwinJSCC_w/_RA", "SwinJSCC_w/_SAandRA"])
+                            "SwinJSCC_w/_RA", "SwinJSCC_w/_SAandRA", "SwinJSCC_vq-vae"])
     p.add_argument("--channel-type", type=str, default="awgn",
                 choices=["awgn", "rayleigh"])
     p.add_argument("--C", type=str, default="96", help="bottleneck dimension(s), comma separated")
@@ -37,6 +37,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
                 help="SNR values for test, comma separated")
     p.add_argument("--model_size", type=str, default="base",
                 choices=["small", "base", "large"])
+    p.add_argument("--freeze-encoder-decoder", action="store_true", help="Freeze encoder and decoder parameters")
     return p
 
 def load_weights(model_path, net: nn.Module):
@@ -66,55 +67,54 @@ def main():
 
     net = SwinJSCC(args, cfg).to(cfg.device)
 
-    pretrained_path = r"C:/Code/PythonProject/SwinJSCC_implementation/checkpoints/SwinJSCC_wo_SAandRA_AWGN_HRimage_snr13_psnr_C96.model"
+    pretrained_path = r"checkpoints\SwinJSCC_w\o_SAandRA_CIFAR10_awgn_10_6_0324084319\models\EP5.model"
     if Path(pretrained_path).exists():
         print("Loading author's pretrained model from:", pretrained_path)
-        author_checkpoint = torch.load(pretrained_path)
+    #     author_checkpoint = torch.load(pretrained_path)
 
-        # 2. Create a new state_dict for your model
-        new_state_dict = {}
+    #     new_state_dict = {}
 
-        print("Translating state_dict keys...")
-        for old_key, value in author_checkpoint.items():
-            new_key = old_key
+    #     print("Translating state_dict keys...")
+    #     for old_key, value in author_checkpoint.items():
+    #         new_key = old_key
 
-            # --- Apply Mismatch 1 & 2: Encoder SA/RA renaming ---
-            if new_key.startswith('encoder.'):
+    #         # --- Apply Mismatch 1 & 2: Encoder SA/RA renaming ---
+    #         if new_key.startswith('encoder.'):
                 
-                # CASE 1: Model là _SA -> Đổi tên thành sa_...
-                if cfg.model == 'SwinJSCC_w/_SA':
-                    if 'sm_list' in new_key and 'sm_list1' not in new_key:
-                        new_key = new_key.replace('sm_list', 'sa_sm_list')
-                    elif 'bm_list' in new_key and 'bm_list1' not in new_key:
-                        new_key = new_key.replace('bm_list', 'sa_bm_list')
+    #             # CASE 1: Model là _SA -> Đổi tên thành sa_...
+    #             if cfg.model == 'SwinJSCC_w/_SA':
+    #                 if 'sm_list' in new_key and 'sm_list1' not in new_key:
+    #                     new_key = new_key.replace('sm_list', 'sa_sm_list')
+    #                 elif 'bm_list' in new_key and 'bm_list1' not in new_key:
+    #                     new_key = new_key.replace('bm_list', 'sa_bm_list')
                 
-                # CASE 2: Model là w/o_SAandRA -> Bỏ qua các key modulaion thừa
-                elif cfg.model == 'SwinJSCC_w/o_SAandRA':
-                    if 'sm_list' in new_key or 'bm_list' in new_key:
-                        continue  # <--- QUAN TRỌNG: Không nạp key này vào new_state_dict
+    #             # CASE 2: Model là w/o_SAandRA -> Bỏ qua các key modulaion thừa
+    #             elif cfg.model == 'SwinJSCC_w/o_SAandRA':
+    #                 if 'sm_list' in new_key or 'bm_list' in new_key:
+    #                     continue
 
-                # CASE 3: Các model còn lại (_RA, _SAandRA) -> Logic cũ
-                else:
-                    if 'sm_list1' in new_key:
-                        new_key = new_key.replace('sm_list1', 'sa_sm_list')
-                    elif 'bm_list1' in new_key:
-                        new_key = new_key.replace('bm_list1', 'sa_bm_list')
-                    elif 'sm_list' in new_key:
-                        new_key = new_key.replace('sm_list', 'ra_sm_list')
-                    elif 'bm_list' in new_key:
-                        new_key = new_key.replace('bm_list', 'ra_bm_list')
+    #             # CASE 3: Các model còn lại (_RA, _SAandRA) -> Logic cũ
+    #             else:
+    #                 if 'sm_list1' in new_key:
+    #                     new_key = new_key.replace('sm_list1', 'sa_sm_list')
+    #                 elif 'bm_list1' in new_key:
+    #                     new_key = new_key.replace('bm_list1', 'sa_bm_list')
+    #                 elif 'sm_list' in new_key:
+    #                     new_key = new_key.replace('sm_list', 'ra_sm_list')
+    #                 elif 'bm_list' in new_key:
+    #                     new_key = new_key.replace('bm_list', 'ra_bm_list')
 
-            # --- Apply Mismatch 3: AdaptiveModulator Sequential vs Named ---
-            if 'bm_list' in new_key:
-                if '.fc.0.' in new_key:
-                    new_key = new_key.replace('.fc.0.', '.fc1.')
-                elif '.fc.2.' in new_key:
-                    new_key = new_key.replace('.fc.2.', '.fc2.')
-                elif '.fc.4.' in new_key:
-                    new_key = new_key.replace('.fc.4.', '.fc3.')
+    #         # --- Apply Mismatch 3: AdaptiveModulator Sequential vs Named ---
+    #         if 'bm_list' in new_key:
+    #             if '.fc.0.' in new_key:
+    #                 new_key = new_key.replace('.fc.0.', '.fc1.')
+    #             elif '.fc.2.' in new_key:
+    #                 new_key = new_key.replace('.fc.2.', '.fc2.')
+    #             elif '.fc.4.' in new_key:
+    #                 new_key = new_key.replace('.fc.4.', '.fc3.')
             
-            new_state_dict[new_key] = value
-        # new_state_dict = torch.load(pretrained_path)
+    #         new_state_dict[new_key] = value
+        new_state_dict = torch.load(pretrained_path)
 
         # 3. Load the translated state_dict into your model
         try:

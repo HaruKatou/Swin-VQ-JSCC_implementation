@@ -32,8 +32,8 @@ class Config:
         # Training setup
         self.learning_rate = 1e-4
         # self.total_epochs = 1_000_000
-        self.total_epochs = 10
-        self.print_step = 1000
+        self.total_epochs = 1
+        self.print_step = 10
 
         # Dataset setup
         if args.trainset == 'CIFAR10':
@@ -45,7 +45,7 @@ class Config:
             else:
                 self.train_data_dir = f"{PROJECT_ROOT}/dataset/raw/CIFAR10"
                 self.test_data_dir = f"{PROJECT_ROOT}/dataset/raw/CIFAR10"
-            self.save_model_freq = 5
+            self.save_model_freq = 1
 
             self.channel_number = int(args.C)
             self.downsample = 2
@@ -91,7 +91,7 @@ class Config:
                 self.test_data_dir = [f"{PROJECT_ROOT}/dataset/raw/clic2021/test"]
             elif args.testset == 'ffhq':
                 self.test_data_dir = [f"{PROJECT_ROOT}/dataset/raw/ffhq"]
-            self.save_model_freq = 5
+            self.save_model_freq = 1
 
             self.train_data_dir = [
                 # base_path + '/clic2021/train',
@@ -101,10 +101,7 @@ class Config:
                 f"{PROJECT_ROOT}/dataset/raw/div2k/DIV2K_valid_HR"
             ]
 
-            if args.model == 'DJSCC':
-                channel_number = int(args.C)
-
-            if args.model == 'SwinJSCC_w/o_SAandRA' or args.model == 'SwinJSCC_w/_SA':
+            if args.model in ['DJSCC', 'SwinJSCC_vq-vae', 'SwinJSCC_w/o_SAandRA', 'SwinJSCC_w/_SA']:
                 channel_number = int(args.C)
             else:
                 channel_number = None
