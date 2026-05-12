@@ -185,7 +185,8 @@ class MSE(torch.nn.Module):
         if self.normalization:
             X = (X + 1) / 2
             Y = (Y + 1) / 2
-        return torch.mean(self.squared_difference(X * 255., Y * 255.))  # / 255.
+        # return torch.mean(self.squared_difference(X, Y))
+        return torch.mean(self.squared_difference(X * 255., Y * 255.)) # / 255.
     
 class Distortion(torch.nn.Module):
     def __init__(self, args):
@@ -204,11 +205,11 @@ class Distortion(torch.nn.Module):
             raise ValueError
 
     def forward(self, X, Y, normalization=False):
-        return self.dist.forward(X, Y).mean()  # / 255.
+        return self.dist.forward(X, Y).mean() # / 255.
     
 if __name__ == '__main__':
     rand_im1 = (torch.randint(0, 255, [4, 3, 256, 128], dtype=torch.float32) / 255.).cuda()
     rand_im2 = (torch.randint(0, 255, [4, 3, 256, 128], dtype=torch.float32) / 255.).cuda()
-    losser = MS_SSIM(data_range=1., levels=4, channel=3).cuda()
+    losser = MSE().cuda()
     loss = losser(rand_im1, rand_im2)
     print(loss)

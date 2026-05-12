@@ -8,6 +8,7 @@ class BasicLayer(nn.Module):
 
         super().__init__()
         self.dim = dim
+        self.out_dim = out_dim
         self.input_resolution = input_resolution
         self.depth = depth
         self.blocks = nn.ModuleList([
@@ -71,7 +72,7 @@ class SwinJSCC_Encoder(nn.Module):
         self.hidden_dim = int(self.embed_dims[len(embed_dims)-1] * 1.5)
         self.layer_num = layer_num = 7
 
-        self.patch_embed = PatchEmbed(img_size, 2, 3, embed_dims[0])
+        self.patch_embed = PatchEmbed(img_size, self.patch_size, self.in_chans, embed_dims[0])
 
         # Build Encoder Layers
         self.layers = nn.ModuleList()

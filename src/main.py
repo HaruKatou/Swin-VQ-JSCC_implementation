@@ -67,12 +67,12 @@ def main():
 
     net = SwinJSCC(args, cfg).to(cfg.device)
 
-    pretrained_path = r"checkpoints\SwinJSCC_w\o_SAandRA_CIFAR10_awgn_10_6_0324084319\models\EP5.model"
+    pretrained_path = r"/content/drive/Othercomputers/My Laptop (1)/SwinJSCC_implementation/checkpoints/SwinJSCC_vq-vae_CIFAR10_awgn_10_12_0511155902/models/EP1.model"
     if Path(pretrained_path).exists():
         print("Loading author's pretrained model from:", pretrained_path)
-    #     author_checkpoint = torch.load(pretrained_path)
+        author_checkpoint = torch.load(pretrained_path)
 
-    #     new_state_dict = {}
+        new_state_dict = {}
 
     #     print("Translating state_dict keys...")
     #     for old_key, value in author_checkpoint.items():
@@ -113,10 +113,10 @@ def main():
     #             elif '.fc.4.' in new_key:
     #                 new_key = new_key.replace('.fc.4.', '.fc3.')
             
-    #         new_state_dict[new_key] = value
+            # new_state_dict[new_key] = value
         new_state_dict = torch.load(pretrained_path)
 
-        # 3. Load the translated state_dict into your model
+      #  3. Load the translated state_dict into your model
         try:
             net.load_state_dict(new_state_dict, strict=True)
             print("Successfully loaded translated state_dict!")

@@ -10,6 +10,7 @@ from utils.logger import *
 from training.loss import MS_SSIM
 from models.SwinJSCC.network import SwinJSCC
 from pathlib import Path
+import matplotlib.pyplot as plt
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 MODELS_DIR = PROJECT_ROOT / "checkpoints"
@@ -22,7 +23,14 @@ class Trainer:
         self.test_loader = test_loader
         self.logger = logger
 
-        model_params = [{'params': filter(lambda p: p.requires_grad, self.net.parameters()), 'lr': 0.0001}]
+        # model_params = [{'params': self.net.parameters(), 'lr': 0.0001}]
+        model_params = [
+            {
+                'params': [p for name, p in self.net.named_parameters() 
+                        if 'vq' not in name],
+                'lr': 0.0001
+            }
+        ]
         self.optimizer = optim.Adam(model_params, lr=cfg.learning_rate)
         self.ssim = MS_SSIM(data_range=1.0, levels=4, channel=3).to(cfg.device)
         if cfg.trainset == "CIFAR10":
@@ -90,6 +98,52 @@ class Trainer:
         ])
         self.logger.info(log)
 
+    def _visualize_results(
+        self,
+        input_imgs: torch.Tensor,
+        recon_imgs: torch.Tensor,
+        psnr_scores: list,
+        snr: int,
+        rate: int,
+        max_samples: int = 4,
+        save_path: str = None,
+    ):
+        n = min(max_samples, input_imgs.size(0))
+
+        def to_np(t):
+            return np.clip(t.cpu().detach().permute(1, 2, 0).numpy(), 0, 1)
+
+        fig, axes = plt.subplots(2, n, figsize=(4 * n, 8))
+
+        if n == 1:
+            axes = np.expand_dims(axes, axis=1)
+
+        fig.suptitle(f"SNR = {snr} dB  |  Rate = 1/24", fontsize=14, fontweight="bold")
+
+        for idx in range(n):
+            inp_np  = to_np(input_imgs[idx])
+            rec_np  = to_np(recon_imgs[idx])
+            psnr_val = psnr_scores[idx]
+
+            axes[0, idx].imshow(inp_np)
+            axes[0, idx].set_title(f"Original #{idx + 1}", fontsize=10)
+            axes[0, idx].axis("off")
+
+            axes[1, idx].imshow(rec_np)
+            axes[1, idx].set_title(f"DeepJSCC #{idx + 1}\nPSNR = {psnr_val:.2f} dB", fontsize=10)
+            axes[1, idx].axis("off")
+
+        plt.tight_layout()
+
+        if save_path:
+            Path(save_path).parent.mkdir(parents=True, exist_ok=True)
+            plt.savefig(save_path, dpi=150, bbox_inches="tight")
+            self.logger.info(f"Visualization saved → {save_path}")
+        else:
+            plt.show()
+
+        plt.close(fig)
+
     @torch.no_grad()
     def evaluate(self) -> None:
         self.net.eval()
@@ -106,6 +160,11 @@ class Trainer:
         for i, snr in enumerate(snrs):
             for j, rate in enumerate(rates):
                 meters = {k: AverageMeter() for k in ["time", "cbr", "snr", "psnr", "msssim"]}
+
+                vis_inp_buf:   list[torch.Tensor] = []
+                vis_rec_buf:   list[torch.Tensor] = []
+                vis_psnr_buf:  list[float]        = []
+                vis_collected: bool               = False
 
                 for batch in self.test_loader:
                     start = time.time()
@@ -134,6 +193,43 @@ class Trainer:
                         f'MSSSIM {meters["msssim"].val:.3f} ({meters["msssim"].avg:.3f})',
                     ])
                     self.logger.info(log)
+
+                #     if visualize and not vis_collected:
+                #         need = vis_samples - len(vis_inp_buf)
+                #         if need > 0:
+                #             recon_clamped = recon.clamp(0, 1)
+                #             for k in range(min(need, inp.size(0))):
+                #                 mse_k = ((inp[k] * 255. - recon_clamped[k] * 255.) ** 2).mean()
+                #                 psnr_k = (
+                #                     10 * (torch.log(255. * 255. / mse_k) / np.log(10)).item()
+                #                     if mse_k.item() > 0 else 0.0
+                #                 )
+                #                 vis_inp_buf.append(inp[k].cpu())
+                #                 vis_rec_buf.append(recon_clamped[k].cpu())
+                #                 vis_psnr_buf.append(psnr_k)
+
+                #         if len(vis_inp_buf) >= vis_samples:
+                #             vis_collected = True
+
+                # if visualize and vis_inp_buf:
+                #     inp_stack = torch.stack(vis_inp_buf)
+                #     rec_stack = torch.stack(vis_rec_buf)
+
+                #     save_path = None
+                #     if save_vis_dir:
+                #         save_path = str(
+                #             Path(save_vis_dir) / f"vis_snr{snr}_rate{rate}.png"
+                #         )
+
+                #     self._visualize_results(
+                #         input_imgs=inp_stack,
+                #         recon_imgs=rec_stack,
+                #         psnr_scores=vis_psnr_buf,
+                #         snr=snr,
+                #         rate=rate,
+                #         max_samples=vis_samples,
+                #         save_path=save_path,
+                #     )
 
                 # store averages
                 results["snr"][i, j] = meters["snr"].avg
