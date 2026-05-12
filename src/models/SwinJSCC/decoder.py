@@ -11,6 +11,7 @@ class BasicLayer(nn.Module):
 
         super().__init__()
         self.dim = dim
+        self.out_dim = out_dim
         self.input_resolution = input_resolution
         self.depth = depth
 
