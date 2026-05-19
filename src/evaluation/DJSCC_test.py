@@ -72,7 +72,6 @@ def main():
     # project_root = current_file_path.parent.parent.parent
     # pretrained_path = project_root / "checkpoints" / "DJSCC_CIFAR10_awgn_10_2_0506121901" / "models" / "EP5.model"
     # if Path(pretrained_path).exists():
-    #     # 3. Load the translated state_dict into your model
     #     try:
     #         checkpoint = torch.load(pretrained_path, map_location=cfg.device)
     #         net.load_state_dict(checkpoint, strict=True)

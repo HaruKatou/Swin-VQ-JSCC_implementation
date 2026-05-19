@@ -32,7 +32,7 @@ class Config:
         # Training setup
         self.learning_rate = 1e-4
         # self.total_epochs = 1_000_000
-        self.total_epochs = 1
+        self.total_epochs = 5
         self.print_step = 10
 
         # Dataset setup

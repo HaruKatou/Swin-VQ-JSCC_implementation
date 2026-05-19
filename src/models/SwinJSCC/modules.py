@@ -374,9 +374,6 @@ class PatchEmbed(nn.Module):
 
     def forward(self, x):
         B, C, H, W = x.shape
-        # FIXME look at relaxing size constraints
-        # assert H == self.img_size[0] and W == self.img_size[1], \
-        #     f"Input image size ({H}*{W}) doesn't match model ({self.img_size[0]}*{self.img_size[1]})."
         x = self.proj(x).flatten(2).transpose(1, 2)  # (B Ph*Pw C)
         if self.norm is not None:
             x = self.norm(x)
@@ -403,7 +400,6 @@ class SwinTransformerBlock(nn.Module):
         self.mlp_ratio = mlp_ratio
 
         if min(self.input_resolution) <= self.window_size:
-            # Don't partition window if window size is larger than input resolution
             self.shift_size = 0
             self.window_size = min(self.input_resolution)
         assert 0 <= self.shift_size < self.window_size, "shift_size must in 0-window_size"

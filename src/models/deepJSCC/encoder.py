@@ -23,7 +23,7 @@ class DJSCC_Encoder(nn.Module):
         self.conv2 = ConvWithPReLU(in_channels=16, out_channels=32, kernel_size=5, stride=2, padding=2)
         self.conv3 = ConvWithPReLU(in_channels=32, out_channels=32, kernel_size=5, padding=2)
         self.conv4 = ConvWithPReLU(in_channels=32, out_channels=32, kernel_size=5, padding=2)
-        self.conv5 = ConvWithPReLU(in_channels=32, out_channels=2*self.C, kernel_size=5, padding=2)
+        self.conv5 = ConvWithPReLU(in_channels=32, out_channels=self.C, kernel_size=5, padding=2)
 
     def forward(self, input_image):
         x = self.conv1(input_image)
