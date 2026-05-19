@@ -11,8 +11,6 @@ import math
 import torch.utils.data as data
 
 NUM_DATASET_WORKERS = 4
-SCALE_MIN = 0.75
-SCALE_MAX = 0.95
 CROP_SIZE = 256
 
 class HRImageDataset(Dataset):

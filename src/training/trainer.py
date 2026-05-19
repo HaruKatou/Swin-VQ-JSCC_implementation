@@ -23,14 +23,14 @@ class Trainer:
         self.test_loader = test_loader
         self.logger = logger
 
-        # model_params = [{'params': self.net.parameters(), 'lr': 0.0001}]
-        model_params = [
-            {
-                'params': [p for name, p in self.net.named_parameters() 
-                        if 'vq' not in name],
-                'lr': 0.0001
-            }
-        ]
+        model_params = [{'params': self.net.parameters(), 'lr': 0.0001}]
+        # model_params = [
+        #     {
+        #         'params': [p for name, p in self.net.named_parameters() 
+        #                 if 'vq' not in name],
+        #         'lr': 0.0001
+        #     }
+        # ]
         self.optimizer = optim.Adam(model_params, lr=cfg.learning_rate)
         self.ssim = MS_SSIM(data_range=1.0, levels=4, channel=3).to(cfg.device)
         if cfg.trainset == "CIFAR10":

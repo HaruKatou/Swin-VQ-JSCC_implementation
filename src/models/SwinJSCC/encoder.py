@@ -97,7 +97,6 @@ class SwinJSCC_Encoder(nn.Module):
         if C != None:
             self.head_list = nn.Linear(embed_dims[-1], C)
 
-        # Build adaptive modulators
         if model not in ['SwinJSCC_w/o_SAandRA', 'SwinJSCC_vq-vae']:
             self._build_modulators(model)
 
@@ -163,7 +162,6 @@ class SwinJSCC_Encoder(nn.Module):
             x, _ = self._apply_modulation(x, self.sa_sm_list, self.sa_bm_list, snr, self.H, self.W, self.sa_sigmoid)
             x, mod_val = self._apply_modulation(x, self.ra_sm_list, self.ra_bm_list, rate, self.H, self.W, self.ra_sigmoid)
 
-        # Code Mask Module if using RA
         mask = torch.sum(mod_val, dim=1)
         sorted_mask, indices = mask.sort(dim=1, descending=True)
         c_indices = indices[:, :rate]
