@@ -32,7 +32,7 @@ class Config:
         # Training setup
         self.learning_rate = 1e-4
         # self.total_epochs = 1_000_000
-        self.total_epochs = 5
+        self.total_epochs = 50
         self.print_step = 10
 
         # Dataset setup
@@ -45,7 +45,7 @@ class Config:
             else:
                 self.train_data_dir = f"{PROJECT_ROOT}/dataset/raw/CIFAR10"
                 self.test_data_dir = f"{PROJECT_ROOT}/dataset/raw/CIFAR10"
-            self.save_model_freq = 1
+            self.save_model_freq = 10
 
             self.channel_number = int(args.C)
             self.downsample = 2

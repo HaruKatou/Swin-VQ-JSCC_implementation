@@ -1,5 +1,5 @@
 from numpy import unique
-
+import math
 from .decoder import *
 from .encoder import *
 from .channel import Channel
@@ -117,7 +117,7 @@ class VectorQuantizer_EMA(nn.Module):
                     self.ema_cluster_size[dead] = 1.0
 
         unique = torch.unique(indices)
-        print(f"Codebook usage: {len(unique)}/{self.num_embeddings} entries used")
+        # print(f"Codebook usage: {len(unique)}/{self.num_embeddings} entries used")
 
         z_q = z_flat + (z_q_flat - z_flat).detach()
         z_q = z_q.reshape(B, N, C)
@@ -283,7 +283,7 @@ class SwinJSCC(nn.Module):
             J = self.vq.num_embeddings
             ortho_loss_norm = ortho_loss / (J ** 2)
 
-            print(f"Recon Loss: {loss.item():.4f}, VQ Loss: { self.vq_lambda * vq_loss.item():.4f}, Ortho Loss: {self.vq_lambda_ortho * ortho_loss_norm.item():.6f} ")
+            # print(f"Recon Loss: {loss.item():.4f}, VQ Loss: { self.vq_lambda * vq_loss.item():.4f}, Ortho Loss: {self.vq_lambda_ortho * ortho_loss_norm.item():.6f} ")
             loss = loss + self.vq_lambda * vq_loss + self.vq_lambda_ortho * ortho_loss_norm
 
         return recon_image, CBR, chan_param, mse, loss
