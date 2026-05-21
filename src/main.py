@@ -67,7 +67,7 @@ def main():
 
     net = SwinJSCC(args, cfg).to(cfg.device)
 
-    pretrained_path = r"/kaggle/input/models/harukatou/swin-vq-vae-3/pytorch/default/1/EP1.model"
+    pretrained_path = r"checkpoints\SwinJSCC_vq-vae_CIFAR10_awgn_10_4_0505130349\models\EP30.model"
     if Path(pretrained_path).exists():
         print("Loading author's pretrained model from:", pretrained_path)
         author_checkpoint = torch.load(pretrained_path)
@@ -134,7 +134,7 @@ def main():
                 trainer.save_checkpoint(epoch + 1)
                 trainer.evaluate()
     else:
-        trainer.evaluate()
+        trainer.evaluate(visualize=False)
 
 if __name__ == "__main__":
     main()

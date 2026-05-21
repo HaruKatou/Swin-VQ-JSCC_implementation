@@ -12,6 +12,8 @@ wheels/
 # Dataset
 dataset
 
+libbpg-0.9.1
+
 # Temporary upload files
 .tmp*
 *.tmp

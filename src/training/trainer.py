@@ -77,8 +77,7 @@ class Trainer:
             if self.global_step % self.cfg.print_step == 0:
                 self._log_step(epoch, meters)
 
-        # end of epoch
-        self.logger.info(f"Epoch {epoch} finished – "
+        self.logger.info(f"Epoch {epoch} finished - "
                          f"Loss {meters['loss'].avg:.4f} "
                          f"PSNR {meters['psnr'].avg:.2f} "
                          f"MS-SSIM {meters['msssim'].avg:.4f}")
@@ -118,7 +117,7 @@ class Trainer:
         if n == 1:
             axes = np.expand_dims(axes, axis=1)
 
-        fig.suptitle(f"SNR = {snr} dB  |  Rate = 1/24", fontsize=14, fontweight="bold")
+        fig.suptitle(f"SNR = {snr} dB  |  R = 1/48", fontsize=14, fontweight="bold")
 
         for idx in range(n):
             inp_np  = to_np(input_imgs[idx])
@@ -130,7 +129,7 @@ class Trainer:
             axes[0, idx].axis("off")
 
             axes[1, idx].imshow(rec_np)
-            axes[1, idx].set_title(f"DeepJSCC #{idx + 1}\nPSNR = {psnr_val:.2f} dB", fontsize=10)
+            axes[1, idx].set_title(f"SwinJSCC #{idx + 1}\nPSNR = {psnr_val:.2f} dB", fontsize=10)
             axes[1, idx].axis("off")
 
         plt.tight_layout()
@@ -145,7 +144,7 @@ class Trainer:
         plt.close(fig)
 
     @torch.no_grad()
-    def evaluate(self) -> None:
+    def evaluate(self, visualize: bool = False, save_vis_dir: str = "outputs/visualizations", vis_samples: int = 4) -> None:
         self.net.eval()
         snrs = [int(v) for v in self.cfg.multiple_snr.split(",")]
         rates = [int(v) for v in self.cfg.C.split(",")]
@@ -194,42 +193,42 @@ class Trainer:
                     ])
                     self.logger.info(log)
 
-                #     if visualize and not vis_collected:
-                #         need = vis_samples - len(vis_inp_buf)
-                #         if need > 0:
-                #             recon_clamped = recon.clamp(0, 1)
-                #             for k in range(min(need, inp.size(0))):
-                #                 mse_k = ((inp[k] * 255. - recon_clamped[k] * 255.) ** 2).mean()
-                #                 psnr_k = (
-                #                     10 * (torch.log(255. * 255. / mse_k) / np.log(10)).item()
-                #                     if mse_k.item() > 0 else 0.0
-                #                 )
-                #                 vis_inp_buf.append(inp[k].cpu())
-                #                 vis_rec_buf.append(recon_clamped[k].cpu())
-                #                 vis_psnr_buf.append(psnr_k)
+                    if visualize and not vis_collected:
+                        need = vis_samples - len(vis_inp_buf)
+                        if need > 0:
+                            recon_clamped = recon.clamp(0, 1)
+                            for k in range(min(need, inp.size(0))):
+                                mse_k = ((inp[k] * 255. - recon_clamped[k] * 255.) ** 2).mean()
+                                psnr_k = (
+                                    10 * (torch.log(255. * 255. / mse_k) / np.log(10)).item()
+                                    if mse_k.item() > 0 else 0.0
+                                )
+                                vis_inp_buf.append(inp[k].cpu())
+                                vis_rec_buf.append(recon_clamped[k].cpu())
+                                vis_psnr_buf.append(psnr_k)
 
-                #         if len(vis_inp_buf) >= vis_samples:
-                #             vis_collected = True
+                        if len(vis_inp_buf) >= vis_samples:
+                            vis_collected = True
 
-                # if visualize and vis_inp_buf:
-                #     inp_stack = torch.stack(vis_inp_buf)
-                #     rec_stack = torch.stack(vis_rec_buf)
+                if visualize and vis_inp_buf:
+                    inp_stack = torch.stack(vis_inp_buf)
+                    rec_stack = torch.stack(vis_rec_buf)
 
-                #     save_path = None
-                #     if save_vis_dir:
-                #         save_path = str(
-                #             Path(save_vis_dir) / f"vis_snr{snr}_rate{rate}.png"
-                #         )
+                    save_path = None
+                    if save_vis_dir:
+                        save_path = str(
+                            Path(save_vis_dir) / f"vis_snr{snr}_rate{rate}.png"
+                        )
 
-                #     self._visualize_results(
-                #         input_imgs=inp_stack,
-                #         recon_imgs=rec_stack,
-                #         psnr_scores=vis_psnr_buf,
-                #         snr=snr,
-                #         rate=rate,
-                #         max_samples=vis_samples,
-                #         save_path=save_path,
-                #     )
+                    self._visualize_results(
+                        input_imgs=inp_stack,
+                        recon_imgs=rec_stack,
+                        psnr_scores=vis_psnr_buf,
+                        snr=snr,
+                        rate=rate,
+                        max_samples=vis_samples,
+                        save_path=save_path,
+                    )
 
                 # store averages
                 results["snr"][i, j] = meters["snr"].avg
@@ -260,7 +259,6 @@ class Trainer:
         filename = f"EP{epoch}.model"
         path = self.cfg.models / filename
 
-        # Create directory if missing
         path.parent.mkdir(parents=True, exist_ok=True)
 
         torch.save(self.net.state_dict(), path)
