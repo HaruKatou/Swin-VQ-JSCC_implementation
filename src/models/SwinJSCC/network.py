@@ -105,6 +105,7 @@ class VectorQuantizer_EMA(nn.Module):
                 n = self.ema_cluster_size.sum()
                 cluster_size = ((self.ema_cluster_size + 1e-5)
                                 / (n + self.num_embeddings * 1e-5) * n)
+                # e_j = m_j / cluster_size_j
                 self.embedding.weight.data = self.ema_w / cluster_size.unsqueeze(1)
 
                 # Dead entry reinitialization
@@ -132,7 +133,7 @@ class VectorQuantizer_EMA(nn.Module):
     
     def get_normalized_codebook(self) -> torch.Tensor:
         w = self.embedding.weight                                  
-        return w / (w.norm(dim=1, keepdim=True) + 1e-8)
+        return w / (w.norm(dim=1, keepdim=True) + 1e-8) # L2 normalized
 
 
 class SwinJSCC(nn.Module):

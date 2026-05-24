@@ -77,7 +77,7 @@ class CIFAR10(Dataset):
         return self.dataset.__getitem__(item % self.len)
 
     def __len__(self):
-        return self.len * 10
+        return self.len
     
 def worker_init_fn_seed(worker_id):
         seed = 10

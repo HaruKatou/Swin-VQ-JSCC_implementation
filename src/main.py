@@ -27,7 +27,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     p.add_argument("--distortion-metric", type=str, default="MSE",
                 choices=["MSE", "MS-SSIM"])
     p.add_argument("--model", type=str,
-                default="SwinJSCC_w/_SAandRA",
+                default="SwinJSCC_w/o_SAandRA",
                 choices=["SwinJSCC_w/o_SAandRA", "SwinJSCC_w/_SA",
                             "SwinJSCC_w/_RA", "SwinJSCC_w/_SAandRA", "SwinJSCC_vq-vae"])
     p.add_argument("--channel-type", type=str, default="awgn",
@@ -67,7 +67,7 @@ def main():
 
     net = SwinJSCC(args, cfg).to(cfg.device)
 
-    pretrained_path = r"checkpoints\SwinJSCC_vq-vae_CIFAR10_awgn_10_4_0505130349\models\EP30.model"
+    pretrained_path = r"checkpoints\SwinJSCC_w\o_SAandRA_CIFAR10_awgn_10_2_0518214318\models\EP10.model"
     if Path(pretrained_path).exists():
         print("Loading author's pretrained model from:", pretrained_path)
         author_checkpoint = torch.load(pretrained_path)
