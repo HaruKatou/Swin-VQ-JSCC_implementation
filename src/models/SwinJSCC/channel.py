@@ -60,7 +60,7 @@ class Channel(nn.Module):
             target_power = torch.tensor(target_power, device=self.device)
 
         power = torch.mean(x ** 2) * 2
-        scale = torch.sqrt(target_power) / torch.sqrt(power)
+        scale = torch.sqrt(power) / torch.sqrt(target_power)
 
         return x * scale, power
     

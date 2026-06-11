@@ -67,7 +67,7 @@ def main():
 
     net = SwinJSCC(args, cfg).to(cfg.device)
 
-    pretrained_path = r"checkpoints\SwinJSCC_w\o_SAandRA_CIFAR10_awgn_10_2_0518214318\models\EP10.model"
+    pretrained_path = r"checkpoints\SwinJSCC_vq-vae_CIFAR10_awgn_10_2_0519235610\models\EP20.model"
     if Path(pretrained_path).exists():
         print("Loading author's pretrained model from:", pretrained_path)
         author_checkpoint = torch.load(pretrained_path)
@@ -136,6 +136,7 @@ def main():
     else:
         trainer.evaluate(visualize=False)
 
+# uv run src/main.py --training --trainset CIFAR10 --distortion-metric MSE --model SwinJSCC_w/o_SAandRA --channel-type awgn --C 12 --multiple-snr 10 --model_size base
 if __name__ == "__main__":
     main()
 
