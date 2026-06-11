@@ -40,7 +40,7 @@ pip install -r requirements.txt
 
 | Argument | Description |
 |---|---|
-| `SwinJSCC_w/o_SAandRA` | SwinJSCC without SA and RA modules — used as the JSCC baseline for comparisons |
+| `SwinJSCC_w/o_SAandRA` | SwinJSCC — used as the JSCC baseline for comparisons |
 | `SwinJSCC_vq-vae` | Swin-VQ-JSCC (proposed model) |
 | `DeepJSCC` | DeepJSCC |
 

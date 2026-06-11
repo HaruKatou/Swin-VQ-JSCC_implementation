@@ -33,7 +33,7 @@ class Config:
         self.learning_rate = 1e-4
         # self.total_epochs = 1_000_000
         self.total_epochs = 50
-        self.print_step = 10
+        self.print_step = 100
 
         # Dataset setup
         if args.trainset == 'CIFAR10':
